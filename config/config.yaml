@@ -1,0 +1,72 @@
+# HTTP/TCP Troubleshooting Tool Configuration
+# Type: client, backend, or both
+type: both
+
+# Client configuration (required if type is 'client' or 'both')
+client:
+  timeout: 30s
+  interval: 10s  # Default interval (used if requests_per_second is not set)
+  endpoints:
+    - name: "Health Check"
+      url: "http://localhost:8080/health"
+      method: GET
+      retries: 2
+      requests_per_second: 10 
+
+    - name: "API Test"
+      url: "http://localhost:8080/api/test"
+      method: POST
+      headers:
+        Content-Type: application/json
+        X-Custom-Header: test-value
+      body: '{"message": "Hello from client"}'
+      retries: 1
+      requests_per_second: 0.5
+
+    - name: "Unreliable Endpoint"
+      url: "http://localhost:8080/unreliable"
+      method: GET
+      retries: 3
+      requests_per_second: 1
+
+# Backend configuration (required if type is 'backend' or 'both')
+backend:
+  port: 8080
+  endpoints:
+    - path: /health
+      method: GET
+      status_code: 200
+      body: "OK"
+
+    - path: /api/test
+      method: POST
+      status_code: 200
+      headers:
+        Content-Type: application/json
+      body: '{"status": "success", "received": true}'
+
+    - path: /slow
+      method: GET
+      status_code: 200
+      delay: 2s
+      body: "This response was delayed"
+
+    - path: /unreliable
+      method: GET
+      status_code: 200
+      drop_percent: 30      # Drop 30% of connections
+      idle_percent: 20      # Idle 20% of connections
+      idle_duration: 10s    # Keep idle connections for 10 seconds
+      body: "Unreliable endpoint response"
+
+    - path: /error
+      method: GET
+      status_code: 500
+      headers:
+        Content-Type: application/json
+      body: '{"error": "Internal server error simulation"}'
+
+# Logging configuration
+logging:
+  level: info    # debug, info, warn, error
+  verbose: true  # Include detailed diagnostics
