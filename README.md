@@ -46,8 +46,9 @@ type: both
 
 # Client configuration
 client:
-  timeout: 30s
-  interval: 5s  # Default interval (if requests_per_second is not set)
+  timeout: 0s           # Global execution duration (0s = run indefinitely)
+  request_timeout: 30s  # Timeout for individual HTTP requests
+  interval: 5s          # Default interval (if requests_per_second is not set)
   endpoints:
     - name: "Health Check"
       url: "http://localhost:8080/health"
@@ -198,7 +199,8 @@ logging:
 ```yaml
 type: both
 client:
-  timeout: 30s
+  timeout: 5m           # Run for 5 minutes then stop
+  request_timeout: 10s  # Fail requests taking longer than 10s
   interval: 3s
   endpoints:
     - name: "High Frequency Test"

@@ -24,16 +24,28 @@ func NewClient(config *ClientConfig, logger *Logger, metrics *Metrics) *Client {
 	return &Client{
 		config:  config,
 		client: &http.Client{
-			Timeout: config.Timeout,
+			Timeout: config.RequestTimeout,
+			// RequestTimeout is applied per request, not globally to the client
+			// Global client timeout is handled by context in Run()
 		},
 		logger:  logger,
 		metrics: metrics,
 	}
 }
 
-// Run starts the client and makes requests to configured endpoints
+// Run starts the HTTP client component
 func (c *Client) Run(ctx context.Context) error {
 	c.logger.Info("Starting HTTP client...")
+
+	// Apply global timeout if configured
+	var cancel context.CancelFunc
+	if c.config.Timeout > 0 {
+		c.logger.Info("Client configured to run for %v", c.config.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, c.config.Timeout)
+		defer cancel()
+	} else {
+		c.logger.Info("Client configured to run indefinitely (no global timeout)")
+	}
 
 	// Start a goroutine for each endpoint to handle rate limiting independently
 	for _, endpoint := range c.config.Endpoints {

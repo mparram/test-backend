@@ -19,8 +19,9 @@ type Config struct {
 // ClientConfig holds client-specific configuration
 type ClientConfig struct {
 	Endpoints              []EndpointConfig `yaml:"endpoints"`
-	Timeout                time.Duration    `yaml:"timeout"`
-	Interval               time.Duration    `yaml:"interval"` // Time between requests
+	Timeout                time.Duration    `yaml:"timeout"`                  // Global execution duration
+	RequestTimeout         time.Duration    `yaml:"request_timeout,omitempty"` // Per-request timeout
+	Interval               time.Duration    `yaml:"interval"`                 // Time between requests
 	MaxConcurrentRequests  int              `yaml:"max_concurrent_requests,omitempty"` // Max concurrent requests per endpoint (0 = unlimited)
 }
 
@@ -102,6 +103,11 @@ func validateConfig(config *Config) error {
 				config.Client.Endpoints[i].Method = "GET"
 			}
 		}
+		// Set default request timeout if not specified
+		if config.Client.RequestTimeout == 0 {
+			config.Client.RequestTimeout = 30 * time.Second
+		}
+		
 		// MaxConcurrentRequests defaults to 0 (unlimited) if not specified
 	}
 
