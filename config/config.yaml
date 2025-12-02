@@ -5,7 +5,8 @@ type: both
 # Client configuration (required if type is 'client' or 'both')
 client:
   timeout: 30s
-  interval: 10s  # Default interval (used if requests_per_second is not set)
+  interval: 5s  # Default interval (used if requests_per_second is not set)
+  max_concurrent_requests: 0  # Maximum concurrent requests per endpoint (0 = unlimited, default)
   endpoints:
     - name: "Health Check"
       url: "http://localhost:8080/health"

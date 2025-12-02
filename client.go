@@ -48,20 +48,47 @@ func (c *Client) Run(ctx context.Context) error {
 
 // runEndpoint handles requests for a single endpoint with rate limiting
 func (c *Client) runEndpoint(ctx context.Context, endpoint EndpointConfig) {
+	// Create semaphore to limit concurrent requests (only if limit is set)
+	var semaphore chan struct{}
+	if c.config.MaxConcurrentRequests > 0 {
+		semaphore = make(chan struct{}, c.config.MaxConcurrentRequests)
+	}
+	
+	// Helper function to launch request with optional semaphore control
+	launchRequest := func() {
+		if semaphore != nil {
+			// With concurrency limit
+			go func() {
+				semaphore <- struct{}{}        // Acquire semaphore
+				defer func() { <-semaphore }() // Release semaphore
+				c.makeRequest(ctx, endpoint)
+			}()
+		} else {
+			// Unlimited concurrency
+			go c.makeRequest(ctx, endpoint)
+		}
+	}
+	
 	if endpoint.RequestsPerSecond > 0 {
 		// Rate-limited mode: N requests per second
 		interval := time.Duration(float64(time.Second) / endpoint.RequestsPerSecond)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
-		c.logger.Info("Endpoint [%s] configured for %.2f requests/second", endpoint.Name, endpoint.RequestsPerSecond)
+		if c.config.MaxConcurrentRequests > 0 {
+			c.logger.Info("Endpoint [%s] configured for %.2f requests/second (max %d concurrent)", 
+				endpoint.Name, endpoint.RequestsPerSecond, c.config.MaxConcurrentRequests)
+		} else {
+			c.logger.Info("Endpoint [%s] configured for %.2f requests/second (unlimited concurrent)", 
+				endpoint.Name, endpoint.RequestsPerSecond)
+		}
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				c.makeRequest(ctx, endpoint)
+				launchRequest()
 			}
 		}
 	} else {
@@ -69,15 +96,23 @@ func (c *Client) runEndpoint(ctx context.Context, endpoint EndpointConfig) {
 		ticker := time.NewTicker(c.config.Interval)
 		defer ticker.Stop()
 
+		if c.config.MaxConcurrentRequests > 0 {
+			c.logger.Info("Endpoint [%s] configured with interval %v (max %d concurrent)", 
+				endpoint.Name, c.config.Interval, c.config.MaxConcurrentRequests)
+		} else {
+			c.logger.Info("Endpoint [%s] configured with interval %v (unlimited concurrent)", 
+				endpoint.Name, c.config.Interval)
+		}
+
 		// Make initial request immediately
-		c.makeRequest(ctx, endpoint)
+		launchRequest()
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				c.makeRequest(ctx, endpoint)
+				launchRequest()
 			}
 		}
 	}
