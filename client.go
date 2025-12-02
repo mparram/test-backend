@@ -37,22 +37,36 @@ func NewClient(config *ClientConfig, logger *Logger, metrics *Metrics) *Client {
 func (c *Client) Run(ctx context.Context) error {
 	c.logger.Info("Starting HTTP client...")
 
-	// Apply global timeout if configured
+	// Create a context specifically for request generation
+	var runCtx context.Context
 	var cancel context.CancelFunc
+
 	if c.config.Timeout > 0 {
 		c.logger.Info("Client configured to run for %v", c.config.Timeout)
-		ctx, cancel = context.WithTimeout(ctx, c.config.Timeout)
+		// Derive runCtx from the main ctx, but with a timeout
+		runCtx, cancel = context.WithTimeout(ctx, c.config.Timeout)
 		defer cancel()
+
+		// Monitor timeout to log when we stop sending requests
+		go func() {
+			<-runCtx.Done()
+			// If runCtx is done but main ctx is not, it means we hit the timeout
+			if ctx.Err() == nil {
+				c.logger.Info("Client timeout reached. Stopping requests but keeping process alive...")
+			}
+		}()
 	} else {
 		c.logger.Info("Client configured to run indefinitely (no global timeout)")
+		runCtx = ctx
 	}
 
 	// Start a goroutine for each endpoint to handle rate limiting independently
+	// They will use runCtx, so they stop when timeout is reached
 	for _, endpoint := range c.config.Endpoints {
-		go c.runEndpoint(ctx, endpoint)
+		go c.runEndpoint(runCtx, endpoint)
 	}
 
-	// Wait for context cancellation
+	// Wait for MAIN context cancellation (signal), not the timeout
 	<-ctx.Done()
 	c.logger.Info("Client shutting down...")
 	return ctx.Err()
