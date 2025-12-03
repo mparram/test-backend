@@ -58,7 +58,7 @@ sed -i "s/\${YOUR_ROUTE_HOST}/$ROUTE_HOST/" manifests/client/configmap-http-conf
 # Apply the client manifests
 oc apply -k manifests/client --namespace test-client
 ```
-then scale the client deployment to 10 replicas
+then you can scale the client deployment to e.g. 10 replicas, to simulate 10 clients making requests to the backend.
 ```bash
 oc scale deployment http-client --replicas=10 -n test-client
 ```
