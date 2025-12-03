@@ -15,10 +15,10 @@ data:
       interval: 1s  # Default interval (used if requests_per_second is not set)
       endpoints:
         - name: "route-backend"
-          url: "http://YOUR_ROUTE_HOST/unreliable"
+          url: "http://${YOUR_ROUTE_HOST}/unreliable"
           method: GET
           retries: 3
-          requests_per_second: 800
+          requests_per_second: 500
     logging:
       level: error    # debug, info, warn, error
       verbose: false  # Include detailed diagnostics
