@@ -58,6 +58,11 @@ sed -i "s/\${YOUR_ROUTE_HOST}/$ROUTE_HOST/" manifests/client/configmap-http-conf
 # Apply the client manifests
 oc apply -k manifests/client --namespace test-client
 ```
+then scale the client deployment to 10 replicas
+```bash
+oc scale deployment http-client --replicas=10 -n test-client
+```
+
 
 ## Configuration
 
@@ -109,6 +114,38 @@ backend:
 logging:
   level: info     # debug, info, warn, error
   verbose: true   # Include detailed diagnostics
+```
+
+Testing in OpenShift, with the next configuration, we can estimate around 25k simultaneous connections, 
+multiplying the 5s delay at the backend, by 500 requests per second at each client, and deploying 10 replicas of the client deployment.
+
+Backend:
+```yaml
+type: backend
+backend:
+  port: 8080
+  endpoints:
+    - path: /unreliable
+      method: GET
+      status_code: 200
+      drop_percent: 0      # Drop 30% of connections
+      idle_percent: 100      # Idle 20% of connections
+      idle_duration: 5s    # Keep idle connections for 10 seconds
+      body: "Unreliable endpoint response"
+```
+Client:
+```yaml
+type: client
+client:
+  timeout: 120s           # Global execution duration (0s = run indefinitely)
+  request_timeout: 30s  # Timeout for individual HTTP requests
+  interval: 1s  # Default interval (used if requests_per_second is not set)
+  endpoints:
+    - name: "route-backend"
+      url: "http://${YOUR_ROUTE_HOST}/unreliable"
+      method: GET
+      retries: 3
+      requests_per_second: 500
 ```
 
 ## Operation Modes
