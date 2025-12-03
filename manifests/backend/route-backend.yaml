@@ -1,0 +1,15 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: test-backend
+  labels:
+    type: sharded
+spec:
+  path: /
+  to:
+    kind: Service
+    name: test-backend
+    weight: 100
+  port:
+    targetPort: 8080
+  wildcardPolicy: None

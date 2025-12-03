@@ -1,0 +1,42 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: http-config-backend
+data:
+  config.yaml: |-
+    # HTTP/TCP Troubleshooting Tool Configuration
+    # Type: client, backend, or both
+    type: backend
+    # Backend configuration (required if type is 'backend' or 'both')
+    backend:
+      port: 8080
+      endpoints:
+        - path: /health
+          method: GET
+          status_code: 200
+          body: "OK"
+
+        - path: /api/test
+          method: POST
+          status_code: 200
+          headers:
+            Content-Type: application/json
+          body: '{"status": "success", "received": true}'
+
+        - path: /slow
+          method: GET
+          status_code: 200
+          delay: 2s
+          body: "This response was delayed"
+
+        - path: /unreliable
+          method: GET
+          status_code: 200
+          drop_percent: 0      # Drop 30% of connections
+          idle_percent: 100      # Idle 20% of connections
+          idle_duration: 5s    # Keep idle connections for 10 seconds
+          body: "Unreliable endpoint response"
+    # Logging configuration
+    logging:
+      level: error    # debug, info, warn, error
+      verbose: false  # Include detailed diagnostics

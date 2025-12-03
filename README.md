@@ -20,25 +20,48 @@ A Go-based tool for troubleshooting HTTP/TCP connections. It can act as a client
 
 ## Installation
 
-```bash
-# Build
+You can build the application locally or use the container image in OpenShift, available in the [Quay.io](https://quay.io/repository/mparrade/test-backend) registry.
 
+### Build locally
+
+```bash
 go build -o ./bin/test-backend
 ```
 
-## Usage
-
+#### Usage
+Use default configuration (config/config.yaml)
 ```bash
-# Use default configuration (config/config.yaml)
 ./bin/test-backend
+```
 
-# Specify configuration file
+Specify configuration file
+```bash
 ./bin/test-backend -config my-config.yaml
+```
+
+### Run in OpenShift
+Using the container image from Quay.io
+```bash
+# Create the backend namespace
+oc create namespace test-backend
+
+# Apply the backend manifests
+oc apply -k manifests/backend --namespace test-backend
+
+# Create the client namespace
+oc create namespace test-client
+
+# Get the backend route host and update the client configuration
+ROUTE_HOST=$(oc get route test-backend -n test-backend -o jsonpath='{.spec.host}')
+sed -i "s/\${YOUR_ROUTE_HOST}/$ROUTE_HOST/" manifests/client/configmap-http-config-client.yaml
+
+# Apply the client manifests
+oc apply -k manifests/client --namespace test-client
 ```
 
 ## Configuration
 
-The `config/config.yaml` file controls the application behavior:
+The `config/config.yaml` (Or configmaps in OpenShift) file controls the application behavior:
 
 ```yaml
 # Type: client, backend, or both
@@ -319,17 +342,15 @@ test-backend/
 ├── metrics.go       # Prometheus metrics
 ├── config/
 │   └── config.yaml  # Example configuration
+├── manifests/       # OpenShift/Kubernetes manifests
+│   ├── backend/     # Backend deployment manifests
+│   ├── client/      # Client deployment manifests
+│   └── sharding/    # Sharding configuration
 ├── go.mod           # Go dependencies
 └── README.md        # This documentation
 ```
 
 ## Troubleshooting
-
-### Error: "cannot find GOROOT directory"
-
-```bash
-export GOROOT=/usr/lib/golang
-```
 
 ### Client Cannot Connect to Backend
 

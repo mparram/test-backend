@@ -1,0 +1,24 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: http-config-client
+data:
+  config.yaml: |-
+    # HTTP/TCP Troubleshooting Tool Configuration
+    # Type: client, backend, or both
+    type: client
+
+    # Client configuration (required if type is 'client' or 'both')
+    client:
+      timeout: 120s           # Global execution duration (0s = run indefinitely)
+      request_timeout: 30s  # Timeout for individual HTTP requests
+      interval: 1s  # Default interval (used if requests_per_second is not set)
+      endpoints:
+        - name: "route-backend"
+          url: "http://YOUR_ROUTE_HOST/unreliable"
+          method: GET
+          retries: 3
+          requests_per_second: 800
+    logging:
+      level: error    # debug, info, warn, error
+      verbose: false  # Include detailed diagnostics
